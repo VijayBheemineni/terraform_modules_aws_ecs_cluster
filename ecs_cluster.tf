@@ -1,3 +1,59 @@
+/*
+  Below code blocks creates ECS EC2 Instance Role.
+*/
+data "aws_iam_policy" "ssm_full_access" {
+  name = "AmazonSSMFullAccess"
+}
+
+data "aws_iam_policy" "ec2_container_service" {
+  name = "AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_role" "ecs_ec2_container_instance_role" {
+  name               = join("_", [var.tags.name, "ecs_ec2_container_instance_role"])
+  assume_role_policy = file("${path.module}/policies/ecs_ec2_container_instance_trust_policy.json")
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_full_access_attachment" {
+  role       = aws_iam_role.ecs_ec2_container_instance_role.id
+  policy_arn = data.aws_iam_policy.ssm_full_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_container_service_attachment" {
+  role       = aws_iam_role.ecs_ec2_container_instance_role.id
+  policy_arn = data.aws_iam_policy.ec2_container_service.arn
+}
+
+resource "aws_iam_instance_profile" "ecs_ec2_instance_profile" {
+  name = var.tags.name
+  role = aws_iam_role.ecs_ec2_container_instance_role.name
+}
+
+/*
+  Below code blocks creates ECS Task Execution Role
+*/
+data "template_file" "ecs_task_execution_role_policy_template_file" {
+  template = file("${path.module}/policies/ecs_task_execution_role_policy.json")
+}
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name               = join("_", [var.tags.name, "ecs_task_execution_role"])
+  assume_role_policy = file("${path.module}/policies/ecs_task_execution_role_trust_policy.json")
+}
+
+resource "aws_iam_policy" "ecs_task_execution_role_policy" {
+  name   = join("_", [var.tags.name, "ecs_task_execution_role"])
+  policy = data.template_file.ecs_task_execution_role_policy_template_file.rendered
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_attachment" {
+  role       = aws_iam_role.ecs_task_execution_role.id
+  policy_arn = aws_iam_policy.ecs_task_execution_role_policy.arn
+}
+
+/*
+  Below code block creates bare mininum ECS cluster.
+*/
 resource "aws_ecs_cluster" "ecs_cluster" {
   name = var.tags.name
   setting {
@@ -6,6 +62,9 @@ resource "aws_ecs_cluster" "ecs_cluster" {
   }
 }
 
+/*
+  Below code blocks create required configuration for EC2 launch template.
+*/
 data "template_file" "user_data" {
   template = file("${path.module}/templates/user_data.sh")
   vars = {
@@ -69,8 +128,14 @@ resource "aws_launch_template" "lt" {
   }
   user_data              = base64encode(data.template_file.user_data.rendered)
   vpc_security_group_ids = [aws_security_group.ecs_ec2_instances.id]
+  iam_instance_profile {
+    arn = aws_iam_instance_profile.ecs_ec2_instance_profile.arn
+  }
 }
 
+/*
+  Below code block creates ASG used by ECS EC2 Capacity Provider.
+*/
 resource "aws_autoscaling_group" "asg" {
   name             = var.tags.name
   max_size         = local.asg_config.min_size
@@ -84,6 +149,9 @@ resource "aws_autoscaling_group" "asg" {
   vpc_zone_identifier   = local.vpc_config.private_subnets
 }
 
+/*
+  Below code block creates ECS EC2 capacity provider.
+*/
 resource "aws_ecs_capacity_provider" "ecs_ec2_cp" {
   name = var.tags.name
   auto_scaling_group_provider {
@@ -98,6 +166,10 @@ resource "aws_ecs_capacity_provider" "ecs_ec2_cp" {
   }
 }
 
+/*
+  Below code block attaches capacity providers to ECS cluster and
+  defines default capacity provider strategy. 
+*/
 resource "aws_ecs_cluster_capacity_providers" "cluster_providers" {
   cluster_name = aws_ecs_cluster.ecs_cluster.name
   capacity_providers = [
