@@ -14,7 +14,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_ecs_cluster"></a> [ecs\_cluster](#module\_ecs\_cluster) | ../../terraform_modules_aws_ecs_cluster | n/a |
+| <a name="module_ecs_cluster"></a> [ecs\_cluster](#module\_ecs\_cluster) | https://github.com/VijayBheemineni/terraform_modules_aws_ecs_cluster.git?ref=v0.1.1 | n/a |
 
 ## Resources
 
