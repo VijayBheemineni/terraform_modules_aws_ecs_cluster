@@ -17,6 +17,45 @@ data "template_file" "user_data" {
   ]
 }
 
+data "aws_vpc" "vpc" {
+  filter {
+    name   = "tag:Name"
+    values = [var.tags.name]
+  }
+}
+
+resource "aws_security_group" "ecs_ec2_instances" {
+  name        = join("_", [var.tags.name, "ecs_ec2_instances"])
+  description = join(" ", [var.tags.name, "security group used by ECS ec2 instances"])
+  vpc_id      = data.aws_vpc.vpc.id
+
+  ingress {
+    description = "SSH access within VPC network."
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [data.aws_vpc.vpc.cidr_block]
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = merge(
+    var.tags,
+    {
+      Name = join("_", [var.tags.name, "ecs_ec2_instances"])
+    }
+  )
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "aws_launch_template" "lt" {
   name                                 = var.tags.name
   description                          = join(" ", [var.tags.name, "aws launch template"])
@@ -28,7 +67,8 @@ resource "aws_launch_template" "lt" {
   monitoring {
     enabled = local.launchtemplate_config.monitoring
   }
-  user_data = base64encode(data.template_file.user_data.rendered)
+  user_data              = base64encode(data.template_file.user_data.rendered)
+  vpc_security_group_ids = [aws_security_group.ecs_ec2_instances.id]
 }
 
 resource "aws_autoscaling_group" "asg" {
