@@ -96,6 +96,14 @@ resource "aws_security_group" "ecs_ec2_instances" {
     cidr_blocks = [data.aws_vpc.vpc.cidr_block]
   }
 
+  ingress {
+    description = "Allow all traffic within VPC network. This is required for container port access through SSH tunnel."
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [data.aws_vpc.vpc.cidr_block]
+  }
+
   egress {
     from_port        = 0
     to_port          = 0
