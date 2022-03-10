@@ -88,13 +88,17 @@ resource "aws_security_group" "ecs_ec2_instances" {
   description = join(" ", [var.tags.name, "security group used by ECS ec2 instances"])
   vpc_id      = data.aws_vpc.vpc.id
 
-  ingress {
-    description = "SSH access within VPC network."
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [data.aws_vpc.vpc.cidr_block]
-  }
+  /*
+    Commented below SSH rule because as its rendundant.Since we are allowing
+    all traffic within VPC Network.
+  */
+  # ingress {
+  #   description = "SSH access within VPC network."
+  #   from_port   = 22
+  #   to_port     = 22
+  #   protocol    = "tcp"
+  #   cidr_blocks = [data.aws_vpc.vpc.cidr_block]
+  # }
 
   ingress {
     description = "Allow all traffic within VPC network. This is required for container port access through SSH tunnel."
