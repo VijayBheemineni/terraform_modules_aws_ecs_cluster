@@ -13,7 +13,7 @@ provider "aws" {
 }
 
 module "ecs_cluster" {
-  source = "git::https://github.com/VijayBheemineni/terraform_modules_aws_ecs_cluster.git?ref=v0.1.1"
+  source = "git::https://github.com/VijayBheemineni/terraform_modules_aws_ecs_cluster.git?ref=v0.1.2"
   # source                      = "../../terraform_modules_aws_ecs_cluster"
   tags                        = var.tags
   ecs_cluster_config          = var.ecs_cluster_config
