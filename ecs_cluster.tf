@@ -42,7 +42,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 }
 
 resource "aws_iam_policy" "ecs_task_execution_role_policy" {
-  name   = join("_", [var.tags.name, "ecs_task_execution_role"])
+  name   = join("_", [var.tags.name, "ecs_task_execution_role_policy"])
   policy = data.template_file.ecs_task_execution_role_policy_template_file.rendered
 }
 
