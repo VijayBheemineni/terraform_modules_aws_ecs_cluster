@@ -32,9 +32,7 @@ resource "aws_iam_instance_profile" "ecs_ec2_instance_profile" {
 /*
   Below code blocks creates ECS Task Execution Role
 */
-data "template_file" "ecs_task_execution_role_policy_template_file" {
-  template = file("${path.module}/policies/ecs_task_execution_role_policy.json")
-}
+
 
 resource "aws_iam_role" "ecs_task_execution_role" {
   name               = join("_", [var.tags.name, "ecs_task_execution_role"])
@@ -43,7 +41,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 
 resource "aws_iam_policy" "ecs_task_execution_role_policy" {
   name   = join("_", [var.tags.name, "ecs_task_execution_role"])
-  policy = data.template_file.ecs_task_execution_role_policy_template_file.rendered
+  policy = file("${path.module}/policies/ecs_task_execution_role_policy.json")
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_attachment" {
@@ -65,17 +63,6 @@ resource "aws_ecs_cluster" "ecs_cluster" {
 /*
   Below code blocks create required configuration for EC2 launch template.
 */
-data "template_file" "user_data" {
-  template = file("${path.module}/templates/user_data.sh")
-  vars = {
-    cluster_name = var.tags.name
-
-  }
-  depends_on = [
-    aws_ecs_cluster.ecs_cluster
-  ]
-}
-
 data "aws_vpc" "vpc" {
   filter {
     name   = "tag:Name"
@@ -138,7 +125,14 @@ resource "aws_launch_template" "lt" {
   monitoring {
     enabled = local.launchtemplate_config.monitoring
   }
-  user_data              = base64encode(data.template_file.user_data.rendered)
+  user_data = base64encode(
+    templatefile(
+      "${path.module}/templates/user_data.sh",
+      {
+        cluster_name = var.tags.name
+      }
+    )
+  )
   vpc_security_group_ids = [aws_security_group.ecs_ec2_instances.id]
   iam_instance_profile {
     arn = aws_iam_instance_profile.ecs_ec2_instance_profile.arn
